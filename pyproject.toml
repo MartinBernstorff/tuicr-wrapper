@@ -13,8 +13,8 @@ project-includes = [
 ]
 
 [project.scripts]
-incremental-review = "main:main"
-incr = "main:main"
+incremental-review = "incremental_review.cli:main"
+incr = "incremental_review.cli:main"
 
 [dependency-groups]
 dev = [
