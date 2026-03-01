@@ -177,7 +177,16 @@ def main(
             raise typer.Exit(0)
         raise typer.Exit(1)
 
-    revision_range = f"{base_commit.root}..HEAD"
+    current_commit = git.current_commit()
+    if base_commit.root == current_commit.root:
+        launch_anyway = typer.confirm(
+            "No new changes since last reviewed commit. Launch anyway?", default=False
+        )
+        if not launch_anyway:
+            raise typer.Exit(0)
+        revision_range = "HEAD~1..HEAD"
+    else:
+        revision_range = f"{base_commit.root}..HEAD"
     typer.echo(f"Opening tuicr with revisions: {revision_range}")
     os.execvp("tuicr", ["tuicr", "--revisions", revision_range])
 
