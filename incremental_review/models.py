@@ -1,5 +1,6 @@
 import pathlib
 from datetime import datetime
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, RootModel
 
@@ -7,21 +8,22 @@ from pydantic import BaseModel, RootModel
 class RepoPath(RootModel[pathlib.Path]): ...
 
 
-class BranchName(RootModel[str]):
-    root: str
+class BranchName(RootModel[str]): ...
 
 
-class CommitHash(RootModel[str]):
-    root: str
+class CommitRef(RootModel[str]): ...
+
+
+class CommitHash(CommitRef): ...
 
 
 class RevisionRange(BaseModel):
-    start: CommitHash
-    end: str = "HEAD"
+    start: CommitRef
+    end: CommitRef = CommitRef("HEAD")
 
     @property
     def as_arg(self) -> str:
-        return f"{self.start.root}..{self.end}"
+        return f"{self.start.root}..{self.end.root}"
 
 
 class LineComment(BaseModel):
@@ -54,15 +56,15 @@ class Review(BaseModel):
         return all(f.reviewed for f in self.files.values())
 
 
-class CompletedReview(RootModel[Review]):
-    root: Review
+class CompletedReview(RootModel[Review]): ...
 
 
-class IncompleteReview(RootModel[Review]):
-    root: Review
+class IncompleteReview(RootModel[Review]): ...
 
 
-class SortedReviews(RootModel[list[Review]]):
-    """Reviews sorted by created_at descending."""
+T = TypeVar("T")
 
-    root: list[Review]
+
+class DateDescending(RootModel[list[T]], Generic[T]):
+    """Items sorted by date descending."""
+    ...

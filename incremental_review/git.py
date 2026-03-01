@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from incremental_review.models import BranchName, CommitHash, RepoPath
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
@@ -7,10 +7,7 @@ from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 @dataclass
 class GitRepo:
     path: WorkingDirectory
-    terminal: Terminal = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.terminal = Terminal(cwd=self.path)
+    terminal: Terminal
 
     def current_branch(self) -> BranchName:
         output = self.terminal.run_quietly(

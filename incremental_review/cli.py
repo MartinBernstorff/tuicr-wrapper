@@ -6,8 +6,8 @@ import typer
 
 from incremental_review.git import GitRepo
 from incremental_review.models import CompletedReview, IncompleteReview, RevisionRange
-from incremental_review.review_store import find_last_completed_review, find_last_review, mark_current_commit_as_reviewed
-from incremental_review.subprocess_runner import WorkingDirectory
+from incremental_review.review_store import ReviewStore
+from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 
 app = typer.Typer()
 
@@ -22,11 +22,13 @@ def main(
         Path | None, typer.Option(help="Path to the git repository")
     ] = None,
 ) -> None:
-    git = GitRepo(path=WorkingDirectory(repo_path or Path.cwd()))
+    working_dir = WorkingDirectory(repo_path or Path.cwd())
+    git = GitRepo(path=working_dir, terminal=Terminal(cwd=working_dir))
     repo_root = git.root()
     branch = git.current_branch()
+    store = ReviewStore(repo_path=repo_root, branch=branch)
 
-    last_review = find_last_review(repo_root, branch)
+    last_review = store.find_last_review()
 
     match last_review:
         case IncompleteReview():
@@ -36,7 +38,7 @@ def main(
                 launch_tuicr(RevisionRange(start=last_review.root.base_commit))
                 return
             else:
-                completed = find_last_completed_review(repo_root, branch)
+                completed = store.find_last_completed_review()
                 if completed:
                     revision_range = RevisionRange(start=completed.root.base_commit)
                     typer.echo(f"Opening tuicr with revisions: {revision_range.as_arg}")
@@ -52,7 +54,7 @@ def main(
                 "No completed review found. Mark current commit as reviewed?", default=True
             )
             if set_current:
-                mark_current_commit_as_reviewed(git, repo_root, branch)
+                store.mark_current_commit_as_reviewed(git)
                 typer.echo(
                     "Current commit marked as reviewed. Run again after new changes to start a review."
                 )

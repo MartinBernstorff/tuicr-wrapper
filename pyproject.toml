@@ -20,5 +20,6 @@ incr = "incremental_review.cli:main"
 dev = [
     "pydantic>=2.12.5",
     "pyrefly>=0.54.0",
+    "pytest>=9.0.2",
     "typer>=0.24.1",
 ]
