@@ -37,7 +37,58 @@ Example content from a file:
       "reviewed": true,
       "status": "modified",
       "file_comments": [],
-      "line_comments": {}
+      "line_comments": {
+        "122": [
+          {
+            "id": "08cfaa78-3b3a-4f20-9ff9-cb2bb7596c77",
+            "content": "If no completed review is found for branch, ask the user if they'd like to set the current commit as \"reviewed\".",
+            "comment_type": "note",
+            "created_at": "2026-03-01T15:50:57.965716Z",
+            "line_context": null,
+            "side": "new",
+            "line_range": null
+          }
+        ],
+        "33": [
+          {
+            "id": "43791d14-41ec-4dbf-9f62-2ac2ec9990f8",
+            "content": "Also replace these with pydantic rootmodels. created_at should be a datetime.",
+            "comment_type": "note",
+            "created_at": "2026-03-01T15:47:59.257264Z",
+            "line_context": null,
+            "side": "new",
+            "line_range": {
+              "start": 30,
+              "end": 33
+            }
+          }
+        ],
+        "51": [
+          {
+            "id": "6d6e8382-157d-4ce4-a23a-617b157adc0e",
+            "content": "Explain these args to me (not inline, just in your text output)",
+            "comment_type": "note",
+            "created_at": "2026-03-01T15:48:25.293648Z",
+            "line_context": null,
+            "side": "new",
+            "line_range": {
+              "start": 48,
+              "end": 51
+            }
+          }
+        ],
+        "41": [
+          {
+            "id": "88dc3805-5684-4376-a5c7-9f6dbcaadb6e",
+            "content": "Use a dataclass, so you don't need the __init__",
+            "comment_type": "note",
+            "created_at": "2026-03-01T15:48:10.163786Z",
+            "line_context": null,
+            "side": "new",
+            "line_range": null
+          }
+        ]
+      }
     },
   },
   "session_notes": null

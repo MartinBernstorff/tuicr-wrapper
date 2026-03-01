@@ -1,6 +1,8 @@
 import json
 import os
 import subprocess
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -8,6 +10,8 @@ import typer
 from pydantic import BaseModel, RootModel
 
 app = typer.Typer()
+
+REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
 
 
 class RepoPath(RootModel[str]):
@@ -22,25 +26,39 @@ class CommitHash(RootModel[str]):
     root: str
 
 
+class LineComment(BaseModel):
+    id: str
+    content: str
+    comment_type: str = ""
+    created_at: datetime | None = None
+    line_context: str | None = None
+    side: str | None = None
+    line_range: dict[str, int] | None = None
+
+
 class ReviewFile(BaseModel):
+    path: str
     reviewed: bool = False
+    status: str = ""
+    file_comments: list[str] = []
+    line_comments: dict[str, list[LineComment]] = {}
 
 
 class Review(BaseModel):
-    repo_path: str
-    branch_name: str
-    base_commit: str
-    created_at: str = ""
-    files: list[ReviewFile] = []
+    repo_path: RepoPath
+    branch_name: BranchName
+    base_commit: CommitHash
+    created_at: datetime
+    files: dict[str, ReviewFile] = {}
 
     @property
     def is_completed(self) -> bool:
-        return all(f.reviewed for f in self.files)
+        return all(f.reviewed for f in self.files.values())
 
 
+@dataclass
 class GitRepo:
-    def __init__(self, path: Path) -> None:
-        self.path = path
+    path: Path
 
     def current_branch(self) -> BranchName:
         result = subprocess.run(
@@ -62,21 +80,51 @@ class GitRepo:
         )
         return RepoPath(result.stdout.strip())
 
+    def current_commit(self) -> CommitHash:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return CommitHash(result.stdout.strip())
+
 
 def find_reviews(repo_path: RepoPath, branch: BranchName) -> list[Review]:
-    reviews_dir = Path.home() / "Library" / "Application Support" / "reviews"
-    if not reviews_dir.exists():
-        raise FileNotFoundError(f"Reviews directory not found: {reviews_dir}")
+    if not REVIEWS_DIR.exists():
+        raise FileNotFoundError(f"Reviews directory not found: {REVIEWS_DIR}")
 
     matches = []
-    for f in reviews_dir.glob("*.json"):
+    for f in REVIEWS_DIR.glob("*.json"):
         data = json.loads(f.read_text())
         review = Review.model_validate(data)
-        if review.repo_path == repo_path.root and review.branch_name == branch.root:
+        if review.repo_path == repo_path and review.branch_name == branch:
             matches.append(review)
 
     matches.sort(key=lambda r: r.created_at, reverse=True)
     return matches
+
+
+def mark_current_commit_as_reviewed(
+    git: GitRepo, repo_root: RepoPath, branch: BranchName
+) -> CommitHash:
+    REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "reviews"
+    REVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+
+    commit = git.current_commit()
+    review = Review(
+        repo_path=repo_root,
+        branch_name=branch,
+        base_commit=commit,
+        created_at=datetime.now(),
+        files={},
+    )
+
+    review_file = REVIEWS_DIR / f"{commit.root}_{branch.root}.json"
+    review_file.write_text(review.model_dump_json(indent=2))
+    typer.echo(f"Marked {commit.root} as reviewed.")
+    return commit
 
 
 @app.command()
@@ -97,29 +145,36 @@ def main(
         raise typer.Exit(1)
 
     reviews = find_reviews(repo_root, branch)
-    if not reviews:
-        typer.echo("No reviews found for this branch.")
-        raise typer.Exit(1)
-
     base_commit: CommitHash | None = None
-    most_recent = reviews[0]
-
-    if not most_recent.is_completed:
-        continue_incomplete = typer.confirm(
-            "Most recent review is incomplete. Continue it?", default=True
-        )
-        if continue_incomplete:
-            base_commit = CommitHash(most_recent.base_commit)
-        else:
-            for review in reviews[1:]:
-                if review.is_completed:
-                    base_commit = CommitHash(review.base_commit)
-                    break
+    if len(reviews) == 0:
+        base_commit = None
     else:
-        base_commit = CommitHash(most_recent.base_commit)
+        most_recent = reviews[0]
+
+        if most_recent.is_completed:
+            base_commit = most_recent.base_commit
+        else:
+            continue_incomplete = typer.confirm(
+                "Most recent review is incomplete. Continue it?", default=True
+            )
+            if continue_incomplete:
+                base_commit = most_recent.base_commit
+            else:
+                for review in reviews[1:]:
+                    if review.is_completed:
+                        base_commit = review.base_commit
+                        break
 
     if not base_commit:
-        typer.echo("No completed review found for this branch.")
+        set_current = typer.confirm(
+            "No completed review found. Mark current commit as reviewed?", default=True
+        )
+        if set_current:
+            mark_current_commit_as_reviewed(git, repo_root, branch)
+            typer.echo(
+                "Current commit marked as reviewed. Run again after new changes to start a review."
+            )
+            raise typer.Exit(0)
         raise typer.Exit(1)
 
     revision_range = f"{base_commit.root}..HEAD"
