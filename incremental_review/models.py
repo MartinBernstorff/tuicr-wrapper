@@ -15,6 +15,10 @@ class CommitHash(RootModel[str]):
     root: str
 
 
+class RevisionRange(RootModel[str]):
+    root: str
+
+
 class LineComment(BaseModel):
     id: str
     content: str

@@ -5,13 +5,17 @@ from typing import Annotated
 import typer
 
 from incremental_review.git import GitRepo
-from incremental_review.models import CommitHash
+from incremental_review.models import CommitHash, RevisionRange
 from incremental_review.review_store import (
     find_reviews,
     mark_current_commit_as_reviewed,
 )
 
 app = typer.Typer()
+
+
+def launch_tuicr(revision_range: RevisionRange) -> None:
+    os.execvp("tuicr", ["tuicr", "--revisions", revision_range.root])
 
 
 @app.command()
@@ -38,10 +42,7 @@ def main(
             if typer.confirm(
                 "Most recent review is incomplete. Continue it?", default=True
             ):
-                os.execvp(
-                    "tuicr",
-                    ["tuicr", "--revisions", f"{most_recent.base_commit}..HEAD"],
-                )
+                launch_tuicr(RevisionRange(f"{most_recent.base_commit.root}..HEAD"))
             else:
                 for review in reviews[1:]:
                     if review.is_completed:
@@ -59,6 +60,6 @@ def main(
             )
         raise typer.Exit(1)
 
-    revision_range = f"{last_completed_review.root}..HEAD"
-    typer.echo(f"Opening tuicr with revisions: {revision_range}")
-    os.execvp("tuicr", ["tuicr", "--revisions", revision_range])
+    revision_range = RevisionRange(f"{last_completed_review.root}..HEAD")
+    typer.echo(f"Opening tuicr with revisions: {revision_range.root}")
+    launch_tuicr(revision_range)
