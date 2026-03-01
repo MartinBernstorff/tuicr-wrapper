@@ -1,5 +1,5 @@
 [project]
-name = "tuicr-wrapper"
+name = "incremental-review"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,7 +13,8 @@ project-includes = [
 ]
 
 [project.scripts]
-tuicr-wrapper = "main:main"
+incremental-review = "main:main"
+incr = "main:main"
 
 [dependency-groups]
 dev = [
