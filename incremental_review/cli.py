@@ -29,22 +29,26 @@ def main(
 
     reviews = find_reviews(repo_root, branch)
 
-    base_commit: CommitHash | None = None
+    last_completed_review: CommitHash | None = None
 
     if not len(reviews) == 0:
         most_recent = reviews[0]
 
         if not most_recent.is_completed:
-            if not typer.confirm(
+            if typer.confirm(
                 "Most recent review is incomplete. Continue it?", default=True
             ):
+                os.execvp(
+                    "tuicr",
+                    ["tuicr", "--revisions", f"{most_recent.base_commit}..HEAD"],
+                )
+            else:
                 for review in reviews[1:]:
                     if review.is_completed:
-                        base_commit = review.base_commit
+                        last_completed_review = review.base_commit
                         break
-            base_commit = most_recent.base_commit
 
-    if not base_commit:
+    if not last_completed_review:
         set_current = typer.confirm(
             "No completed review found. Mark current commit as reviewed?", default=True
         )
@@ -55,15 +59,6 @@ def main(
             )
         raise typer.Exit(1)
 
-    if base_commit.root == git.current_commit().root:
-        launch_anyway = typer.confirm(
-            "No new changes since last reviewed commit. Would you like to review ?",
-            default=False,
-        )
-        if not launch_anyway:
-            raise typer.Exit(0)
-        revision_range = "HEAD~1..HEAD"
-    else:
-        revision_range = f"{base_commit.root}..HEAD"
+    revision_range = f"{last_completed_review.root}..HEAD"
     typer.echo(f"Opening tuicr with revisions: {revision_range}")
     os.execvp("tuicr", ["tuicr", "--revisions", revision_range])
