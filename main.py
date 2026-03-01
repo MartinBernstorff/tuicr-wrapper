@@ -177,8 +177,7 @@ def main(
             raise typer.Exit(0)
         raise typer.Exit(1)
 
-    current_commit = git.current_commit()
-    if base_commit.root == current_commit.root:
+    if base_commit.root == git.current_commit().root:
         launch_anyway = typer.confirm(
             "No new changes since last reviewed commit. Launch anyway?", default=False
         )
