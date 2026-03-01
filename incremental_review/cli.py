@@ -4,8 +4,9 @@ from typing import Annotated
 
 import typer
 
+from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dispatch
 from incremental_review.git import GitRepo
-from incremental_review.models import CompletedReview, IncompleteReview, RevisionRange
+from incremental_review.models import IncompleteReview, RevisionRange
 from incremental_review.review_store import ReviewStore
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 
@@ -30,31 +31,31 @@ def main(
 
     last_review = store.find_last_review()
 
-    match last_review:
-        case IncompleteReview():
-            if typer.confirm(
-                "Most recent review is incomplete. Continue it?", default=True
-            ):
-                launch_tuicr(RevisionRange(start=last_review.root.base_commit))
-                return
-            else:
-                completed = store.find_last_completed_review()
-                if completed:
-                    revision_range = RevisionRange(start=completed.root.base_commit)
-                    typer.echo(f"Opening tuicr with revisions: {revision_range.as_arg}")
-                    launch_tuicr(revision_range)
-                    return
-        case CompletedReview():
-            revision_range = RevisionRange(start=last_review.root.base_commit)
-            typer.echo(f"Opening tuicr with revisions: {revision_range.as_arg}")
-            launch_tuicr(revision_range)
+    continue_incomplete = False
+    if isinstance(last_review, IncompleteReview):
+        continue_incomplete = typer.confirm(
+            "Most recent review is incomplete. Continue it?", default=True
+        )
+
+    last_completed = store.find_last_completed_review()
+
+    if last_review is None:
+        set_current = typer.confirm(
+            "No existing reviews found. Mark current commit as reviewed?", default=True
+        )
+        if not set_current:
             return
-        case None:
-            set_current = typer.confirm(
-                "No completed review found. Mark current commit as reviewed?", default=True
+
+    command = dispatch(last_review, last_completed, continue_incomplete)
+
+    match command:
+        case LaunchTUI(revision_range=rr):
+            typer.echo(f"Opening tuicr with revisions: {rr.as_arg}")
+            launch_tuicr(rr)
+        case MarkAsReviewed():
+            store.mark_current_commit_as_reviewed(git)
+            typer.echo(
+                "Current commit marked as reviewed. Run again after new changes to start a review."
             )
-            if set_current:
-                store.mark_current_commit_as_reviewed(git)
-                typer.echo(
-                    "Current commit marked as reviewed. Run again after new changes to start a review."
-                )
+        case NoAction():
+            pass
