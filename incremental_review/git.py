@@ -1,13 +1,23 @@
 from dataclasses import dataclass
+from subprocess import CalledProcessError
 
 from incremental_review.models import BranchName, CommitHash, RepoPath
-from incremental_review.subprocess_runner import Terminal, WorkingDirectory
+from incremental_review.subprocess_runner import Terminal
+
+
+class NotAGitRepo(Exception):
+    pass
 
 
 @dataclass
 class GitRepo:
-    path: WorkingDirectory
     terminal: Terminal
+
+    def __post_init__(self) -> None:
+        try:
+            self.terminal.run_quietly(["git", "rev-parse", "--git-dir"])
+        except CalledProcessError:
+            raise NotAGitRepo(f"{self.terminal.cwd.root} is not a git repository")
 
     def current_branch(self) -> BranchName:
         output = self.terminal.run_quietly(

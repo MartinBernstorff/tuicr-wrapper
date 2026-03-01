@@ -24,7 +24,7 @@ def main(
     ] = None,
 ) -> None:
     working_dir = WorkingDirectory(repo_path or Path.cwd())
-    git = GitRepo(path=working_dir, terminal=Terminal(cwd=working_dir))
+    git = GitRepo(terminal=Terminal(cwd=working_dir))
     repo_root = git.root()
     branch = git.current_branch()
     store = ReviewStore(repo_path=repo_root, branch=branch)

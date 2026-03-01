@@ -26,7 +26,7 @@ class RevisionRange(BaseModel):
         return f"{self.start.root}..{self.end.root}"
 
 
-class LineComment(BaseModel):
+class Comment(BaseModel):
     id: str
     content: str
     comment_type: str = ""
@@ -40,8 +40,8 @@ class ReviewFile(BaseModel):
     path: str
     reviewed: bool = False
     status: str = ""
-    file_comments: list[str] = []
-    line_comments: dict[str, list[LineComment]] = {}
+    file_comments: list[Comment] = []
+    line_comments: dict[str, list[Comment]] = {}
 
 
 class Review(BaseModel):
