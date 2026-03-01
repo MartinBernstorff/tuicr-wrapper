@@ -4,7 +4,7 @@ How do we handle if no review exists? Probably ask:
 
 How do we do incremental reviews?
 * E.g. some hunks look good, others do not
-    * Can we just commit, and then review the next? 
+    * Can we just commit, and then review the next?
     * Or can we stage only some hunks?
 
-Refactor out the logic for tuicr
+Add a test for the CLI launching. Run it with pytest.

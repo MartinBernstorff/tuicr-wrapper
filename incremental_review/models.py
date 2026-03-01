@@ -15,8 +15,13 @@ class CommitHash(RootModel[str]):
     root: str
 
 
-class RevisionRange(RootModel[str]):
-    root: str
+class RevisionRange(BaseModel):
+    start: CommitHash
+    end: str = "HEAD"
+
+    @property
+    def as_arg(self) -> str:
+        return f"{self.start.root}..{self.end}"
 
 
 class LineComment(BaseModel):
@@ -47,3 +52,17 @@ class Review(BaseModel):
     @property
     def is_completed(self) -> bool:
         return all(f.reviewed for f in self.files.values())
+
+
+class CompletedReview(RootModel[Review]):
+    root: Review
+
+
+class IncompleteReview(RootModel[Review]):
+    root: Review
+
+
+class SortedReviews(RootModel[list[Review]]):
+    """Reviews sorted by created_at descending."""
+
+    root: list[Review]

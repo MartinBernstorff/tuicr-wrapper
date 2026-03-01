@@ -5,24 +5,59 @@ from pathlib import Path
 import typer
 
 from incremental_review.git import GitRepo
-from incremental_review.models import BranchName, CommitHash, RepoPath, Review
+from incremental_review.models import (
+    BranchName,
+    CommitHash,
+    CompletedReview,
+    IncompleteReview,
+    RepoPath,
+    Review,
+    SortedReviews,
+)
 
 REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
 
 
-def find_reviews(repo_path: RepoPath, branch: BranchName) -> list[Review]:
+def _parse_review(path: Path) -> Review:
+    data = json.loads(path.read_text())
+    return Review.model_validate(data)
+
+
+def find_reviews(repo_path: RepoPath, branch: BranchName) -> SortedReviews:
     if not REVIEWS_DIR.exists():
         raise FileNotFoundError(f"Reviews directory not found: {REVIEWS_DIR}")
 
     matches = []
     for f in REVIEWS_DIR.glob("*.json"):
-        data = json.loads(f.read_text())
-        review = Review.model_validate(data)
+        review = _parse_review(f)
         if review.repo_path == repo_path and review.branch_name == branch:
             matches.append(review)
 
     matches.sort(key=lambda r: r.created_at, reverse=True)
-    return matches
+    return SortedReviews(matches)
+
+
+def find_last_review(
+    repo_path: RepoPath, branch: BranchName
+) -> CompletedReview | IncompleteReview | None:
+    reviews = find_reviews(repo_path, branch)
+    if not reviews.root:
+        return None
+
+    most_recent = reviews.root[0]
+    if most_recent.is_completed:
+        return CompletedReview(most_recent)
+    return IncompleteReview(most_recent)
+
+
+def find_last_completed_review(
+    repo_path: RepoPath, branch: BranchName
+) -> CompletedReview | None:
+    reviews = find_reviews(repo_path, branch)
+    for review in reviews.root:
+        if review.is_completed:
+            return CompletedReview(review)
+    return None
 
 
 def mark_current_commit_as_reviewed(

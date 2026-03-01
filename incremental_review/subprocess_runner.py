@@ -1,14 +1,28 @@
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import RootModel
 
-class SubprocessRunner:
-    def run(self, args: list[str], cwd: Path) -> str:
+
+class TerminalOutput(RootModel[str]):
+    root: str
+
+
+class WorkingDirectory(RootModel[Path]):
+    root: Path
+
+
+@dataclass
+class Terminal:
+    cwd: WorkingDirectory
+
+    def run_quietly(self, args: list[str]) -> TerminalOutput:
         result = subprocess.run(
             args,
-            cwd=cwd,
+            cwd=self.cwd.root,
             capture_output=True,
             text=True,
             check=True,
         )
-        return result.stdout.strip()
+        return TerminalOutput(result.stdout.strip())
