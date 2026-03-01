@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,8 +15,7 @@ app = typer.Typer()
 REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
 
 
-class RepoPath(RootModel[str]):
-    root: str
+class RepoPath(RootModel[pathlib.Path]): ...
 
 
 class BranchName(RootModel[str]):
