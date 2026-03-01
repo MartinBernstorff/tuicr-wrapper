@@ -24,29 +24,29 @@ def main(
     ] = None,
 ) -> None:
     working_dir = WorkingDirectory(repo_path or Path.cwd())
-    git = GitRepo(terminal=Terminal(cwd=working_dir))
+    git = GitRepo(Terminal(working_dir))
     repo_root = git.root()
     branch = git.current_branch()
-    store = ReviewStore(repo_path=repo_root, branch=branch)
+    store = ReviewStore(repo_root, branch)
 
-    last_review = store.find_last_review()
+    latest_review = store.find_last_review()
 
-    continue_incomplete = False
-    if isinstance(last_review, IncompleteReview):
-        continue_incomplete = typer.confirm(
-            "Most recent review is incomplete. Continue it?", default=True
+    resume_incomplete = False
+    if isinstance(latest_review, IncompleteReview):
+        resume_incomplete = typer.confirm(
+            "Most recent review is incomplete. Resume it?", default=True
         )
 
     last_completed = store.find_last_completed_review()
 
-    if last_review is None:
+    if latest_review is None:
         set_current = typer.confirm(
             "No existing reviews found. Mark current commit as reviewed?", default=True
         )
         if not set_current:
             return
 
-    command = dispatch(last_review, last_completed, continue_incomplete)
+    command = dispatch(latest_review, last_completed, resume_incomplete)
 
     match command:
         case LaunchTUI(revision_range=rr):

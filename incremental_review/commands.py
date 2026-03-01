@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from incremental_review.models import CompletedReview, IncompleteReview, RevisionRange
+from incremental_review.models import CommitRef, CompletedReview, IncompleteReview, RevisionRange
 
 
 @dataclass(frozen=True)
@@ -29,12 +29,12 @@ def dispatch(
     match last_review:
         case IncompleteReview():
             if use_incomplete:
-                return LaunchTUI(RevisionRange(start=last_review.root.base_commit))
+                return LaunchTUI(RevisionRange(start=last_review.root.base_commit, end=CommitRef("HEAD")))
             if last_completed:
-                return LaunchTUI(RevisionRange(start=last_completed.root.base_commit))
+                return LaunchTUI(RevisionRange(start=last_completed.root.base_commit, end=CommitRef("HEAD")))
             return NoAction()
         case CompletedReview():
-            return LaunchTUI(RevisionRange(start=last_review.root.base_commit))
+            return LaunchTUI(RevisionRange(start=last_review.root.base_commit, end=CommitRef("HEAD")))
         case None:
             return MarkAsReviewed()
         case _:

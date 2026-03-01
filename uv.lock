@@ -65,10 +65,8 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "polyfactory" },
-    { name = "pydantic" },
     { name = "pyrefly" },
     { name = "pytest" },
-    { name = "typer" },
 ]
 
 [package.metadata]
@@ -80,10 +78,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "polyfactory", specifier = ">=3.3.0" },
-    { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pyrefly", specifier = ">=0.54.0" },
     { name = "pytest", specifier = ">=9.0.2" },
-    { name = "typer", specifier = ">=0.24.1" },
 ]
 
 [[package]]

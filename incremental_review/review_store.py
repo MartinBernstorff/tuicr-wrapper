@@ -16,12 +16,7 @@ from incremental_review.models import (
     Review,
 )
 
-REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
-
-
-def _ensure_dir_exists(path: Path) -> None:
-    if not path.exists():
-        raise FileNotFoundError(f"Reviews directory not found: {path}")
+DEFAULT_REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
 
 
 def _parse_review(path: Path) -> Review:
@@ -33,12 +28,14 @@ def _parse_review(path: Path) -> Review:
 class ReviewStore:
     repo_path: RepoPath
     branch: BranchName
+    reviews_dir: Path = DEFAULT_REVIEWS_DIR
 
     def find_reviews(self) -> DateDescending[Review]:
-        _ensure_dir_exists(REVIEWS_DIR)
+        if not self.reviews_dir.exists():
+            raise FileNotFoundError(f"Reviews directory not found: {self.reviews_dir}")
 
         matches = []
-        for f in REVIEWS_DIR.glob("*.json"):
+        for f in self.reviews_dir.glob("*.json"):
             review = _parse_review(f)
             if review.repo_path == self.repo_path and review.branch_name == self.branch:
                 matches.append(review)
@@ -64,7 +61,7 @@ class ReviewStore:
         return None
 
     def mark_current_commit_as_reviewed(self, git: GitRepo) -> CommitHash:
-        REVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+        self.reviews_dir.mkdir(parents=True, exist_ok=True)
 
         commit = git.current_commit()
         review = Review(
@@ -75,7 +72,7 @@ class ReviewStore:
             files={},
         )
 
-        review_file = REVIEWS_DIR / f"{commit.root}_{self.branch.root}.json"
+        review_file = self.reviews_dir / f"{commit.root}_{self.branch.root}.json"
         review_file.write_text(review.model_dump_json(indent=2))
         typer.echo(f"Marked {commit.root} as reviewed.")
         return commit

@@ -19,27 +19,51 @@ class CommitHash(CommitRef): ...
 
 class RevisionRange(BaseModel):
     start: CommitRef
-    end: CommitRef = CommitRef("HEAD")
+    end: CommitRef
 
     @property
     def as_arg(self) -> str:
         return f"{self.start.root}..{self.end.root}"
 
 
+class CommentId(RootModel[str]): ...
+
+
+class CommentContent(RootModel[str]): ...
+
+
+class CommentType(RootModel[str]): ...
+
+
+class LineContext(RootModel[str]): ...
+
+
+class Side(RootModel[str]): ...
+
+
+class LineRange(RootModel[dict[str, int]]): ...
+
+
+class FilePath(RootModel[str]): ...
+
+
+class FileStatus(RootModel[str]): ...
+
+
 class Comment(BaseModel):
-    id: str
-    content: str
-    comment_type: str = ""
+    id: CommentId
+    content: CommentContent
+    comment_type: CommentType = CommentType("")
     created_at: datetime | None = None
-    line_context: str | None = None
-    side: str | None = None
-    line_range: dict[str, int] | None = None
+    line_context: LineContext | None = None
+    side: Side | None = None
+    line_range: LineRange | None = None
 
 
 class ReviewFile(BaseModel):
-    path: str
+    path: FilePath
     reviewed: bool = False
-    status: str = ""
+    status: FileStatus = FileStatus("")
     file_comments: list[Comment] = []
     line_comments: dict[str, list[Comment]] = {}
 
