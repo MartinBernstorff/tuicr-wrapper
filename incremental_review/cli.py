@@ -8,7 +8,11 @@ from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dis
 from incremental_review.git import GitRepo
 from incremental_review.models import IncompleteReview, RevisionRange, TrunkBranch
 from incremental_review.review_store import ReviewStore
-from incremental_review.settings import SettingsFileAlreadyExists, load_settings, write_default_settings
+from incremental_review.settings import (
+    SettingsFileAlreadyExists,
+    load_settings,
+    write_default_settings,
+)
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 
 TRUNK_NAMES = {"develop", "main", "trunk"}
@@ -34,6 +38,18 @@ def init(
         typer.echo(f"Error: settings file already exists at {e}", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"Created default settings at {path}")
+
+
+@app.command()
+def mark_reviewed() -> None:
+    """Mark the current commit as reviewed without launching the TUI."""
+    working_dir = WorkingDirectory(Path.cwd())
+    git = GitRepo(Terminal(working_dir))
+    repo_root = git.root()
+    branch = git.current_branch()
+    store = ReviewStore(repo_root, branch)
+    store.mark_current_commit_as_reviewed(git)
+    typer.echo("Current commit marked as reviewed.")
 
 
 @app.callback(invoke_without_command=True)

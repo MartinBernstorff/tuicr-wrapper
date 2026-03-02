@@ -16,7 +16,9 @@ from incremental_review.models import (
     Review,
 )
 
-DEFAULT_REVIEWS_DIR = Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
+DEFAULT_REVIEWS_DIR = (
+    Path.home() / "Library" / "Application Support" / "tuicr" / "reviews"
+)
 
 
 def _parse_review(path: Path) -> Review:
