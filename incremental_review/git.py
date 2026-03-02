@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from subprocess import CalledProcessError
 
-from incremental_review.models import BranchName, CommitHash, RepoPath
+from incremental_review.models import BranchName, CommitHash, RepoPath, TrunkBranch
 from incremental_review.subprocess_runner import Terminal
 
 
@@ -30,6 +30,15 @@ class GitRepo:
             ["git", "rev-parse", "--show-toplevel"]
         )
         return RepoPath(output.root)
+
+    def branch_exists(self, branch: BranchName) -> bool:
+        try:
+            self.terminal.run_quietly(
+                ["git", "rev-parse", "--verify", branch.root]
+            )
+            return True
+        except CalledProcessError:
+            return False
 
     def current_commit(self) -> CommitHash:
         output = self.terminal.run_quietly(["git", "rev-parse", "HEAD"])

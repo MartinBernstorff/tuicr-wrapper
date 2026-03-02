@@ -6,9 +6,9 @@ import typer
 
 from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dispatch
 from incremental_review.git import GitRepo
-from incremental_review.models import BranchName, IncompleteReview, RevisionRange
+from incremental_review.models import IncompleteReview, RevisionRange, TrunkBranch
 from incremental_review.review_store import ReviewStore
-from incremental_review.settings import load_settings
+from incremental_review.settings import load_settings, write_default_settings
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 
 TRUNK_NAMES = {"develop", "main", "trunk"}
@@ -18,6 +18,18 @@ app = typer.Typer()
 
 def launch_tuicr(revision_range: RevisionRange) -> None:
     os.execvp("tuicr", ["tuicr", "--revisions", revision_range.as_arg])
+
+
+@app.command()
+def init(
+    repo_path: Annotated[
+        Path | None, typer.Option(help="Path to the git repository")
+    ] = None,
+) -> None:
+    """Initialize default incr.toml settings file."""
+    working_dir = WorkingDirectory(repo_path or Path.cwd())
+    path = write_default_settings(working_dir)
+    typer.echo(f"Created default settings at {path}")
 
 
 @app.command()
@@ -33,27 +45,30 @@ def main(
     store = ReviewStore(repo_root, branch)
     settings = load_settings(working_dir)
 
-    # Resolve trunk branch
-    trunk_branch: BranchName | None = None
     if settings.trunk_branch is not None:
         trunk_branch = settings.trunk_branch
     elif branch.root in TRUNK_NAMES:
-        trunk_branch = branch
+        trunk_branch = TrunkBranch(branch.root)
     else:
         trunk_input = typer.prompt("Trunk branch name (e.g. main)", default="main")
-        trunk_branch = BranchName(trunk_input)
+        trunk_branch = TrunkBranch(trunk_input)
+
+    if not git.branch_exists(trunk_branch):
+        typer.echo(f"Error: branch '{trunk_branch.root}' does not exist.", err=True)
+        raise typer.Exit(code=1)
 
     # Don't use trunk fallback when already on trunk
-    is_on_trunk = trunk_branch is not None and branch.root == trunk_branch.root
+    is_on_trunk = branch.root == trunk_branch.root
     effective_trunk = None if is_on_trunk else trunk_branch
 
     latest_review = store.find_last_review()
 
-    resume_incomplete = False
     if isinstance(latest_review, IncompleteReview):
         resume_incomplete = typer.confirm(
             "Most recent review is incomplete. Resume it?", default=True
         )
+    else:
+        resume_incomplete = False
 
     last_completed = store.find_last_completed_review()
 
@@ -64,7 +79,9 @@ def main(
         if not set_current:
             return
 
-    command = dispatch(latest_review, last_completed, resume_incomplete, effective_trunk)
+    command = dispatch(
+        latest_review, last_completed, resume_incomplete, effective_trunk
+    )
 
     match command:
         case LaunchTUI(revision_range=rr):

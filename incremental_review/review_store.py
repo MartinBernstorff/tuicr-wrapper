@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -40,7 +40,10 @@ class ReviewStore:
             if review.repo_path == self.repo_path and review.branch_name == self.branch:
                 matches.append(review)
 
-        matches.sort(key=lambda r: r.created_at, reverse=True)
+        def _aware(dt: datetime) -> datetime:
+            return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+
+        matches.sort(key=lambda r: _aware(r.created_at), reverse=True)
         return DateDescending[Review](matches)
 
     def find_last_review(self) -> CompletedReview | IncompleteReview | None:
@@ -68,7 +71,7 @@ class ReviewStore:
             repo_path=self.repo_path,
             branch_name=self.branch,
             base_commit=commit,
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
             files={},
         )
 

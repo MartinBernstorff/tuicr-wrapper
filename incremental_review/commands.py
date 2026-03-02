@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from incremental_review.models import BranchName, CommitRef, CompletedReview, IncompleteReview, RevisionRange
+from incremental_review.models import CommitRef, CompletedReview, IncompleteReview, RevisionRange, TrunkBranch
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ def dispatch(
     last_review: CompletedReview | IncompleteReview | None,
     last_completed: CompletedReview | None,
     use_incomplete: bool,
-    trunk_branch: BranchName | None = None,
+    trunk_branch: TrunkBranch | None = None,
 ) -> Command:
     match last_review:
         case IncompleteReview():
