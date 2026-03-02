@@ -8,12 +8,12 @@ from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dis
 from incremental_review.git import GitRepo
 from incremental_review.models import IncompleteReview, RevisionRange, TrunkBranch
 from incremental_review.review_store import ReviewStore
-from incremental_review.settings import load_settings, write_default_settings
+from incremental_review.settings import SettingsFileAlreadyExists, load_settings, write_default_settings
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
 
 TRUNK_NAMES = {"develop", "main", "trunk"}
 
-app = typer.Typer()
+app = typer.Typer(invoke_without_command=True)
 
 
 def launch_tuicr(revision_range: RevisionRange) -> None:
@@ -28,16 +28,23 @@ def init(
 ) -> None:
     """Initialize default incr.toml settings file."""
     working_dir = WorkingDirectory(repo_path or Path.cwd())
-    path = write_default_settings(working_dir)
+    try:
+        path = write_default_settings(working_dir)
+    except SettingsFileAlreadyExists as e:
+        typer.echo(f"Error: settings file already exists at {e}", err=True)
+        raise typer.Exit(code=1)
     typer.echo(f"Created default settings at {path}")
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     repo_path: Annotated[
         Path | None, typer.Option(help="Path to the git repository")
     ] = None,
 ) -> None:
+    if ctx.invoked_subcommand is not None:
+        return
     working_dir = WorkingDirectory(repo_path or Path.cwd())
     git = GitRepo(Terminal(working_dir))
     repo_root = git.root()
