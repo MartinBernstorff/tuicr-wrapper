@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from incremental_review.models import CommitRef, CompletedReview, IncompleteReview, RevisionRange
+from incremental_review.models import BranchName, CommitRef, CompletedReview, IncompleteReview, RevisionRange
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ def dispatch(
     last_review: CompletedReview | IncompleteReview | None,
     last_completed: CompletedReview | None,
     use_incomplete: bool,
+    trunk_branch: BranchName | None = None,
 ) -> Command:
     match last_review:
         case IncompleteReview():
@@ -36,6 +37,8 @@ def dispatch(
         case CompletedReview():
             return LaunchTUI(RevisionRange(start=last_review.root.base_commit, end=CommitRef("HEAD")))
         case None:
+            if trunk_branch is not None:
+                return LaunchTUI(RevisionRange(start=CommitRef(trunk_branch.root), end=CommitRef("HEAD")))
             return MarkAsReviewed()
         case _:
             return NoAction()

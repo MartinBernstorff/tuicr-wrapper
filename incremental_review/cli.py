@@ -6,9 +6,12 @@ import typer
 
 from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dispatch
 from incremental_review.git import GitRepo
-from incremental_review.models import IncompleteReview, RevisionRange
+from incremental_review.models import BranchName, IncompleteReview, RevisionRange
 from incremental_review.review_store import ReviewStore
+from incremental_review.settings import load_settings
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
+
+TRUNK_NAMES = {"develop", "main", "trunk"}
 
 app = typer.Typer()
 
@@ -28,6 +31,21 @@ def main(
     repo_root = git.root()
     branch = git.current_branch()
     store = ReviewStore(repo_root, branch)
+    settings = load_settings(working_dir)
+
+    # Resolve trunk branch
+    trunk_branch: BranchName | None = None
+    if settings.trunk_branch is not None:
+        trunk_branch = settings.trunk_branch
+    elif branch.root in TRUNK_NAMES:
+        trunk_branch = branch
+    else:
+        trunk_input = typer.prompt("Trunk branch name (e.g. main)", default="main")
+        trunk_branch = BranchName(trunk_input)
+
+    # Don't use trunk fallback when already on trunk
+    is_on_trunk = trunk_branch is not None and branch.root == trunk_branch.root
+    effective_trunk = None if is_on_trunk else trunk_branch
 
     latest_review = store.find_last_review()
 
@@ -39,14 +57,14 @@ def main(
 
     last_completed = store.find_last_completed_review()
 
-    if latest_review is None:
+    if latest_review is None and effective_trunk is None:
         set_current = typer.confirm(
             "No existing reviews found. Mark current commit as reviewed?", default=True
         )
         if not set_current:
             return
 
-    command = dispatch(latest_review, last_completed, resume_incomplete)
+    command = dispatch(latest_review, last_completed, resume_incomplete, effective_trunk)
 
     match command:
         case LaunchTUI(revision_range=rr):
