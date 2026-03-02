@@ -6,7 +6,7 @@ import typer
 
 from incremental_review.commands import LaunchTUI, MarkAsReviewed, NoAction, dispatch
 from incremental_review.git import GitRepo
-from incremental_review.models import IncompleteReview, RevisionRange, TrunkBranch
+from incremental_review.models import IncompleteReview, RevisionRange
 from incremental_review.review_store import ReviewStore
 from incremental_review.settings import (
     SettingsFileAlreadyExists,
@@ -14,8 +14,6 @@ from incremental_review.settings import (
     write_default_settings,
 )
 from incremental_review.subprocess_runner import Terminal, WorkingDirectory
-
-TRUNK_NAMES = {"develop", "main", "trunk"}
 
 app = typer.Typer(invoke_without_command=True)
 
@@ -68,21 +66,21 @@ def main(
     store = ReviewStore(repo_root, branch)
     settings = load_settings(working_dir)
 
-    if settings.trunk_branch is not None:
-        trunk_branch = settings.trunk_branch
-    elif branch.root in TRUNK_NAMES:
-        trunk_branch = TrunkBranch(branch.root)
-    else:
-        trunk_input = typer.prompt("Trunk branch name (e.g. main)", default="main")
-        trunk_branch = TrunkBranch(trunk_input)
+    if settings.trunk_branch is None:
+        typer.echo(
+            "No trunk branch configured. Defaulting to 'main'. Consider running 'incr init' to create a settings file, so you can diff against trunk."
+        )
 
-    if not git.branch_exists(trunk_branch):
-        typer.echo(f"Error: branch '{trunk_branch.root}' does not exist.", err=True)
+    if not git.branch_exists(settings.trunk_branch):
+        typer.echo(
+            f"Error: settings.trunk_branch '{settings.trunk_branch.root}' does not exist.",
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     # Don't use trunk fallback when already on trunk
-    is_on_trunk = branch.root == trunk_branch.root
-    effective_trunk = None if is_on_trunk else trunk_branch
+    is_on_trunk = branch.root == settings.trunk_branch.root
+    effective_trunk = None if is_on_trunk else settings.trunk_branch
 
     latest_review = store.find_last_review()
 

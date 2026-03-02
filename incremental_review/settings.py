@@ -1,11 +1,7 @@
 from pathlib import Path
 
 import tomli_w
-from pydantic_settings import (
-    BaseSettings,
-    PydanticBaseSettingsSource,
-    TomlConfigSettingsSource,
-)
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
 from incremental_review.models import TrunkBranch
 from incremental_review.subprocess_runner import WorkingDirectory
@@ -14,6 +10,8 @@ SETTINGS_FILENAME = "incr.toml"
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(toml_file=SETTINGS_FILENAME)
+
     trunk_branch: TrunkBranch = TrunkBranch("main")
 
     @classmethod
@@ -25,7 +23,7 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (init_settings,)
+        return (TomlConfigSettingsSource(settings_cls, deep_merge=True),)
 
 
 def load_settings(working_dir: WorkingDirectory) -> Settings:
@@ -33,7 +31,7 @@ def load_settings(working_dir: WorkingDirectory) -> Settings:
     if not toml_path.exists():
         return Settings()
     source = TomlConfigSettingsSource(Settings, toml_file=toml_path)
-    return Settings(**dict(source()))
+    return Settings(_build_sources=((source,), {}))
 
 
 class SettingsFileAlreadyExists(Exception):
